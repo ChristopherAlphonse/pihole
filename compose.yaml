@@ -1,0 +1,45 @@
+services:
+  pihole:
+    container_name: pihole
+    image: docker.io/pihole/pihole:2025.11.0
+    env_file:
+      - .env.pihole
+    networks:
+      traefik-pihole:
+      pihole_network:
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8443:443/tcp"
+      - "123:123/udp"
+    volumes:
+      - config_dnsmasq:/etc/dnsmasq.d
+      - config_pihole:/etc/pihole
+      - ./certs/tls.pem:/etc/pihole/tls.pem:ro
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.pihole-web.loadBalancer.server.port=80
+      - traefik.http.routers.pihole-http.service=pihole-web
+      - traefik.http.routers.pihole-http.rule=Host(`pihole.home.arpa`) || Host(`localhost`)
+      - traefik.http.routers.pihole-http.entrypoints=web
+      - traefik.http.routers.pihole-https.service=pihole-web
+      - traefik.http.routers.pihole-https.rule=Host(`pihole.home.arpa`) || Host(`localhost`)
+      - traefik.http.routers.pihole-https.entrypoints=websecure
+      - traefik.http.routers.pihole-https.tls=true
+      - traefik.http.routers.pihole-https.priority=1
+    restart: unless-stopped
+
+volumes:
+  config_dnsmasq:
+    driver: local
+  config_pihole:
+    driver: local
+
+networks:
+  pihole_network:
+    driver: bridge
+  traefik-pihole:
+    external: true

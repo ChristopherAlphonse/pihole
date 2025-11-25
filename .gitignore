@@ -1,0 +1,64 @@
+# Secrets and sensitive files
+*.secret
+.env
+.env.*
+*.env
+secret/*
+.pihole
+
+# Certificates and keys
+.pem
+.key
+.crt
+.csr
+certs/
+*.pem
+*.key
+*.crt
+*.csr
+
+# Device-specific and sensitive configuration
+pihole_address.txt
+device-mappings.txt
+custom-blocklist.txt
+
+# Compose files with passwords (use .env files instead)
+compose.grafana.yaml
+# Note: compose.yaml should use .env.pihole for sensitive data
+
+# Temporary and one-time scripts
+check-*.ps1
+check-*.sh
+whitelist-*.ps1
+whitelist-*.sh
+cleanup-*.ps1
+cleanup-*.sh
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker volumes data (if mounted locally)
+docker-data/
+volumes/
+
+# Backup files
+*.bak
+*.backup
+*~

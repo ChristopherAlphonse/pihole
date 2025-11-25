@@ -1,0 +1,31 @@
+api:
+  dashboard: true
+  insecure: true
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-pihole
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 30
+      email: ${CF_EMAIL}
+      storage: /letsencrypt/acme.json
+

@@ -1,0 +1,7 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/pihole.crt
+        keyFile: /certs/pihole.key
+

@@ -1,0 +1,44 @@
+services:
+  traefik:
+    container_name: traefik
+    image: docker.io/traefik:v3.0
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=traefik-pihole
+      - --providers.file.directory=/traefik-config
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.cloudflare.acme.dnschallenge=true
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.cloudflare.acme.email=${CF_EMAIL:-admin@example.com}
+      - --certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.delaybeforecheck=30
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - traefik-pihole
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+      - ./certs:/certs:ro
+      - ./traefik-config:/traefik-config:ro
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      - CF_EMAIL=${CF_EMAIL:-admin@example.com}
+    restart: unless-stopped
+    labels:
+      - traefik.enable=false
+
+volumes:
+  traefik_letsencrypt:
+    driver: local
+
+networks:
+  traefik-pihole:
+    external: true
+
