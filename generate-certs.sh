@@ -30,8 +30,8 @@ cat "$CERT_DIR/pihole.crt" "$CERT_DIR/pihole.key" > "$CERT_DIR/tls.pem"
 chmod 600 "$CERT_DIR"/*.key "$CERT_DIR"/*.pem "$CERT_DIR"/tls.pem
 chmod 644 "$CERT_DIR"/*.crt "$CERT_DIR"/*.csr
 
-echo "✅ Self-signed certificate generated for $DOMAIN"
-echo "📁 Certificates are in: $CERT_DIR"
+echo " Self-signed certificate generated for $DOMAIN"
+echo " Certificates are in: $CERT_DIR"
 echo ""
-echo "⚠️  Note: Browsers will show a security warning. You can safely accept it for local use."
+echo "  Note: Browsers will show a security warning. You can safely accept it for local use."
 

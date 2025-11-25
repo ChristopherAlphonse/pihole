@@ -9,7 +9,7 @@ mkdir -p "$CERT_DIR"
 
 # Check if mkcert is available (best option for local trust)
 if command -v mkcert &> /dev/null; then
-    echo "✅ Using mkcert for locally trusted certificates"
+    echo " Using mkcert for locally trusted certificates"
     mkcert -install 2>&1 | head -5
     mkcert "$DOMAIN" pi.hole localhost 127.0.0.1 ::1 2>&1
     mv "${DOMAIN}+3.pem" "$CERT_DIR/pihole.pem"
@@ -18,9 +18,9 @@ if command -v mkcert &> /dev/null; then
     # Create combined certificate file for Pi-hole (tls.pem format)
     cat "$CERT_DIR/pihole.crt" "$CERT_DIR/pihole.key" > "$CERT_DIR/tls.pem"
     chmod 600 "$CERT_DIR/tls.pem"
-    echo "✅ mkcert certificate generated and installed"
+    echo " mkcert certificate generated and installed"
 else
-    echo "⚠️  mkcert not found. Generating self-signed certificate..."
+    echo "  mkcert not found. Generating self-signed certificate..."
     echo "   Install mkcert for locally trusted certs: https://github.com/FiloSottile/mkcert"
 
     # Generate self-signed with proper SAN
@@ -41,12 +41,12 @@ else
     chmod 600 "$CERT_DIR"/*.key "$CERT_DIR"/*.pem "$CERT_DIR"/tls.pem
     chmod 644 "$CERT_DIR"/*.crt
 
-    echo "✅ Self-signed certificate generated"
-    echo "⚠️  Browser will still show warning (normal for self-signed)"
+    echo " Self-signed certificate generated"
+    echo "  Browser will still show warning (normal for self-signed)"
 fi
 
 echo ""
-echo "📁 Certificates in: $CERT_DIR"
+echo " Certificates in: $CERT_DIR"
 ls -lh "$CERT_DIR"/*.{crt,key,pem} 2>/dev/null
 
 
