@@ -75,127 +75,57 @@ def query_ftl_database(query):
 
 
 def fetch_pihole_stats():
-    """Fetch comprehensive stats from Pi-hole FTL database"""
+    """Fetch comprehensive stats from Pi-hole v6 API"""
     global metrics_cache, per_client_metrics, top_domains, top_clients, cache_time
     global query_types, upstream_servers, top_permitted_domains, top_blocked_domains
 
     try:
-        # Get overall statistics
-        stats_query = """
-        SELECT
-            (SELECT COUNT(*) FROM queries WHERE timestamp > strftime('%s', 'now', '-24 hours')) as queries_24h,
-            (SELECT COUNT(*) FROM queries WHERE status = 1 AND timestamp > strftime('%s', 'now', '-24 hours')) as blocked_24h,
-            (SELECT COUNT(*) FROM queries WHERE status = 2 AND timestamp > strftime('%s', 'now', '-24 hours')) as cached_24h,
-            (SELECT COUNT(*) FROM queries WHERE status = 3 AND timestamp > strftime('%s', 'now', '-24 hours')) as forwarded_24h,
-            (SELECT COUNT(DISTINCT client) FROM queries WHERE timestamp > strftime('%s', 'now', '-24 hours')) as unique_clients_24h,
-            (SELECT COUNT(*) FROM queries) as queries_total,
-            (SELECT COUNT(*) FROM queries WHERE status = 1) as blocked_total,
-            (SELECT COUNT(*) FROM queries WHERE status = 2) as cached_total,
-            (SELECT COUNT(*) FROM queries WHERE status = 3) as forwarded_total,
-            (SELECT COUNT(DISTINCT client) FROM queries) as unique_clients_total,
-            (SELECT COUNT(*) FROM network WHERE hwaddr IS NOT NULL AND hwaddr != '') as devices_total,
-            (SELECT COUNT(*) FROM network WHERE hwaddr IS NOT NULL AND hwaddr != '' AND lastQuery > strftime('%s', 'now', '-24 hours')) as devices_active_24h
-        """
-
-        stats_result = query_ftl_database(stats_query)
-        if stats_result:
-            stats = stats_result[0]
-            metrics_cache = {
-                "dns_queries_total": float(stats.get("queries_total", 0)),
-                "dns_blocked_total": float(stats.get("blocked_total", 0)),
-                "dns_forwarded_total": float(stats.get("forwarded_total", 0)),
-                "dns_cached_total": float(stats.get("cached_total", 0)),
-                "clients_total": float(stats.get("unique_clients_total", 0)),
-                "devices_total": float(stats.get("devices_total", 0)),
-                "devices_active_24h": float(stats.get("devices_active_24h", 0)),
-                "dns_queries_24h": float(stats.get("queries_24h", 0)),
-                "dns_blocked_24h": float(stats.get("blocked_24h", 0)),
-                "dns_forwarded_24h": float(stats.get("forwarded_24h", 0)),
-                "dns_cached_24h": float(stats.get("cached_24h", 0)),
-                "clients_24h": float(stats.get("unique_clients_24h", 0)),
-            }
-        else:
-            # Fallback: try Pi-hole HTTP API endpoints. Newer Pi-hole versions
-            # prefer Bearer token in Authorization header; older APIs accept an
-            # auth/password query parameter. Try several endpoints and parse
-            # JSON responses for common keys.
-            tried = []
-            endpoints = [
-                f"{PIHOLE_PROTOCOL}://{PIHOLE_HOST}:{PIHOLE_PORT}/api/summary",
-                f"{PIHOLE_PROTOCOL}://{PIHOLE_HOST}:{PIHOLE_PORT}/api",
-                f"{PIHOLE_PROTOCOL}://{PIHOLE_HOST}:{PIHOLE_PORT}/admin/api.php?summaryRaw",
-                f"{PIHOLE_PROTOCOL}://{PIHOLE_HOST}:{PIHOLE_PORT}/admin/api.php?summary",
-                f"{PIHOLE_PROTOCOL}://{PIHOLE_HOST}:{PIHOLE_PORT}/admin/api.php",
-            ]
-
-            headers = {}
-            if PIHOLE_PASSWORD:
-                # Try using the provided password/token as a Bearer token first
-                headers["Authorization"] = f"Bearer {PIHOLE_PASSWORD}"
-
-            success_api = False
-            last_err = None
-
-            for api_url in endpoints:
-                try:
-                    params = {}
-                    # For legacy admin PHP endpoint some installs expect auth param
-                    if "admin/api.php" in api_url and "summary" in api_url and "Authorization" not in headers:
-                        params = {"auth": PIHOLE_PASSWORD} if PIHOLE_PASSWORD else {}
-
-                    tried.append(api_url)
-                    resp = requests.get(api_url, headers=headers, params=params, timeout=8)
-                    if resp.status_code != 200:
-                        last_err = f"{api_url} returned {resp.status_code}"
-                        continue
-
-                    try:
-                        data = resp.json()
-                    except Exception:
-                        last_err = f"{api_url} returned non-JSON"
-                        continue
-
-                    # Map known fields to exporter metrics
-                    dns_queries = data.get("dns_queries_today") or data.get("queries") or data.get("dns_queries_total")
-                    ads_blocked = data.get("ads_blocked_today") or data.get("ads_blocked_total") or data.get("dns_blocked_total")
-                    forwarded = data.get("queries_forwarded") or data.get("forwarded")
-                    cached = data.get("queries_cached") or data.get("cached")
-                    clients = data.get("unique_clients") or data.get("clients")
-
-                    # If the response is nested (summary: {...}) try to pull out
-                    if not any([dns_queries, ads_blocked, clients]):
-                        # try nested dicts
-                        for v in data.values():
-                            if isinstance(v, dict):
-                                dns_queries = dns_queries or v.get("dns_queries_today")
-                                ads_blocked = ads_blocked or v.get("ads_blocked_today")
-                                clients = clients or v.get("unique_clients")
-
-                    if any([dns_queries, ads_blocked, clients]):
-                        metrics_cache = {
-                            "dns_queries_total": float(dns_queries or 0),
-                            "dns_blocked_total": float(ads_blocked or 0),
-                            "dns_forwarded_total": float(forwarded or 0),
-                            "dns_cached_total": float(cached or 0),
-                            "clients_total": float(clients or 0),
-                            "devices_total": 0.0,  # Not available via API
-                            "devices_active_24h": 0.0,  # Not available via API
-                            "dns_queries_24h": float(dns_queries or 0),
-                            "dns_blocked_24h": float(ads_blocked or 0),
-                            "dns_forwarded_24h": float(forwarded or 0),
-                            "dns_cached_24h": float(cached or 0),
-                            "clients_24h": float(clients or 0),
-                        }
-                        success_api = True
-                        break
-
-                except Exception as api_error:
-                    last_err = str(api_error)
-                    continue
-
-            if not success_api:
-                print(f"API fallback failed (tried: {tried}, last error: {last_err})")
-                # Use zeros if all methods fail
+        # Pi-hole v6 API endpoint
+        api_base = f"{PIHOLE_PROTOCOL}://{PIHOLE_HOST}:{PIHOLE_PORT}"
+        
+        # Get stats summary from Pi-hole v6 API
+        try:
+            resp = requests.get(f"{api_base}/api/stats/summary", timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                queries = data.get("queries", {})
+                clients_data = data.get("clients", {})
+                gravity = data.get("gravity", {})
+                
+                # Extract metrics from v6 API response
+                total_queries = queries.get("total", 0)
+                blocked_queries = queries.get("blocked", 0)
+                forwarded_queries = queries.get("forwarded", 0)
+                cached_queries = queries.get("cached", 0)
+                active_clients = clients_data.get("active", 0)
+                total_clients = clients_data.get("total", 0)
+                domains_blocked = gravity.get("domains_being_blocked", 0)
+                
+                metrics_cache = {
+                    "dns_queries_total": float(total_queries),
+                    "dns_blocked_total": float(blocked_queries),
+                    "dns_forwarded_total": float(forwarded_queries),
+                    "dns_cached_total": float(cached_queries),
+                    "clients_total": float(total_clients),
+                    "devices_total": float(total_clients),
+                    "devices_active_24h": float(active_clients),
+                    "dns_queries_24h": float(total_queries),
+                    "dns_blocked_24h": float(blocked_queries),
+                    "dns_forwarded_24h": float(forwarded_queries),
+                    "dns_cached_24h": float(cached_queries),
+                    "clients_24h": float(active_clients),
+                    "gravity_domains": float(domains_blocked),
+                }
+                
+                # Extract query types from v6 API
+                query_types_data = queries.get("types", {})
+                query_types = {}
+                for qtype, count in query_types_data.items():
+                    query_types[qtype] = float(count)
+                
+                print(f"Pi-hole v6 API: {total_queries} queries, {blocked_queries} blocked, {active_clients} clients")
+            else:
+                print(f"Pi-hole v6 API returned {resp.status_code}")
                 metrics_cache = {
                     "dns_queries_total": 0.0,
                     "dns_blocked_total": 0.0,
@@ -209,172 +139,123 @@ def fetch_pihole_stats():
                     "dns_forwarded_24h": 0.0,
                     "dns_cached_24h": 0.0,
                     "clients_24h": 0.0,
+                    "gravity_domains": 0.0,
                 }
-
-        # Get per-client statistics (last 24 hours)
-        client_query = """
-        SELECT
-            client,
-            COUNT(*) as queries,
-            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as blocked,
-            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as cached,
-            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as forwarded
-        FROM queries
-        WHERE timestamp > strftime('%s', 'now', '-24 hours')
-        GROUP BY client
-        ORDER BY queries DESC
-        LIMIT 50
-        """
-
-        client_results = query_ftl_database(client_query)
-        per_client_metrics = {}
-        for row in client_results:
-            client = row.get("client", "unknown")
-            per_client_metrics[client] = {
-                "queries": float(row.get("queries", 0)),
-                "blocked": float(row.get("blocked", 0)),
-                "cached": float(row.get("cached", 0)),
-                "forwarded": float(row.get("forwarded", 0)),
+        except Exception as e:
+            print(f"Error fetching from Pi-hole v6 API: {e}")
+            metrics_cache = {
+                "dns_queries_total": 0.0,
+                "dns_blocked_total": 0.0,
+                "dns_forwarded_total": 0.0,
+                "dns_cached_total": 0.0,
+                "clients_total": 0.0,
+                "devices_total": 0.0,
+                "devices_active_24h": 0.0,
+                "dns_queries_24h": 0.0,
+                "dns_blocked_24h": 0.0,
+                "dns_forwarded_24h": 0.0,
+                "dns_cached_24h": 0.0,
+                "clients_24h": 0.0,
+                "gravity_domains": 0.0,
             }
 
-        # Get top domains (last 24 hours)
-        domain_query = """
-        SELECT
-            domain,
-            COUNT(*) as queries,
-            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as blocked
-        FROM queries
-        WHERE timestamp > strftime('%s', 'now', '-24 hours')
-          AND domain IS NOT NULL
-          AND domain != ''
-        GROUP BY domain
-        ORDER BY queries DESC
-        LIMIT 50
-        """
+        # Get top domains from v6 API
+        try:
+            resp = requests.get(f"{api_base}/api/stats/top_domains", timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                top_domains = []
+                top_permitted_domains = []
+                # v6 API returns {"domains": [{"domain": "...", "count": N}, ...]}
+                for item in data.get("domains", []):
+                    domain = item.get("domain", "unknown")
+                    count = item.get("count", 0)
+                    top_domains.append({
+                        "domain": domain,
+                        "queries": float(count),
+                        "blocked": 0.0,
+                    })
+                    top_permitted_domains.append({
+                        "domain": domain,
+                        "queries": float(count),
+                    })
+                print(f"Got {len(top_domains)} top domains")
+        except Exception as e:
+            print(f"Error fetching top domains: {e}")
+            top_domains = []
+            top_permitted_domains = []
 
-        domain_results = query_ftl_database(domain_query)
-        top_domains = []
-        for row in domain_results:
-            top_domains.append({
-                "domain": row.get("domain", "unknown"),
-                "queries": float(row.get("queries", 0)),
-                "blocked": float(row.get("blocked", 0)),
-            })
+        # Get blocked domains from queries API
+        try:
+            resp = requests.get(f"{api_base}/api/queries?length=500", timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                blocked_counts = {}
+                for q in data.get("queries", []):
+                    status = q.get("status", "")
+                    if "GRAVITY" in status or "DENY" in status or "BLOCK" in status:
+                        domain = q.get("domain", "unknown")
+                        blocked_counts[domain] = blocked_counts.get(domain, 0) + 1
+                
+                top_blocked_domains = []
+                for domain, count in sorted(blocked_counts.items(), key=lambda x: -x[1])[:20]:
+                    top_blocked_domains.append({
+                        "domain": domain,
+                        "queries": float(count),
+                    })
+                print(f"Got {len(top_blocked_domains)} blocked domains")
+        except Exception as e:
+            print(f"Error fetching blocked domains: {e}")
+            top_blocked_domains = []
 
-        # Get client info from network table
-        # Network table has: id, hwaddr, interface, firstSeen, lastQuery, numQueries, macVendor, aliasclient_id
-        network_query = """
-        SELECT hwaddr, numQueries, macVendor
-        FROM network
-        WHERE hwaddr IS NOT NULL AND hwaddr != ''
-        ORDER BY numQueries DESC
-        LIMIT 50
-        """
+        # Get top clients from v6 API
+        try:
+            resp = requests.get(f"{api_base}/api/stats/top_clients", timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                per_client_metrics = {}
+                top_clients = []
+                # v6 API returns {"clients": [{"ip": "...", "name": "...", "count": N}, ...]}
+                for item in data.get("clients", []):
+                    client_ip = item.get("ip", "unknown")
+                    client_name = item.get("name", "") or client_ip
+                    count = item.get("count", 0)
+                    per_client_metrics[client_ip] = {
+                        "queries": float(count),
+                        "blocked": 0.0,
+                        "cached": 0.0,
+                        "forwarded": 0.0,
+                    }
+                    top_clients.append({
+                        "mac": "",
+                        "name": client_name,
+                        "ip": client_ip,
+                        "queries": float(count),
+                    })
+                print(f"Got {len(top_clients)} clients")
+        except Exception as e:
+            print(f"Error fetching top clients: {e}")
+            per_client_metrics = {}
+            top_clients = []
 
-        network_results = query_ftl_database(network_query)
-        top_clients = []
-        for row in network_results:
-            top_clients.append({
-                "mac": row.get("hwaddr", ""),
-                "name": row.get("macVendor", "unknown"),
-                "ip": "",  # IP not in network table
-                "queries": float(row.get("numQueries", 0)),
-            })
-
-        # Get query types breakdown (last 24 hours)
-        query_type_query = """
-        SELECT
-            type,
-            COUNT(*) as count
-        FROM queries
-        WHERE timestamp > strftime('%s', 'now', '-24 hours')
-        GROUP BY type
-        """
-
-        query_type_results = query_ftl_database(query_type_query)
-        query_types = {}
-        # Map query type numbers to names
-        # 1=A, 2=AAAA, 3=ANY, 4=SRV, 5=SOA, 6=PTR, 7=TXT, 8=NAPTR, 9=MX, 10=DS, 11=RRSIG, 12=DNSKEY, 13=NS, 14=OTHER, 15=SVCB, 16=HTTPS
-        type_names = {
-            1: "A", 2: "AAAA", 3: "ANY", 4: "SRV", 5: "SOA", 6: "PTR", 7: "TXT",
-            8: "NAPTR", 9: "MX", 10: "DS", 11: "RRSIG", 12: "DNSKEY", 13: "NS",
-            14: "OTHER", 15: "SVCB", 16: "HTTPS"
-        }
-        for row in query_type_results:
-            qtype = row.get("type", 0)
-            type_name = type_names.get(qtype, f"TYPE{qtype}")
-            query_types[type_name] = float(row.get("count", 0))
-
-        # Get upstream servers breakdown (last 24 hours)
-        upstream_query = """
-        SELECT
-            forward,
-            COUNT(*) as count
-        FROM queries
-        WHERE timestamp > strftime('%s', 'now', '-24 hours')
-          AND forward IS NOT NULL
-          AND forward != ''
-          AND status = 3
-        GROUP BY forward
-        ORDER BY count DESC
-        """
-
-        upstream_results = query_ftl_database(upstream_query)
-        upstream_servers = {}
-        for row in upstream_results:
-            server = row.get("forward", "unknown")
-            upstream_servers[server] = float(row.get("count", 0))
-
-        # Get top permitted domains (last 24 hours, status != 1)
-        permitted_query = """
-        SELECT
-            domain,
-            COUNT(*) as queries
-        FROM queries
-        WHERE timestamp > strftime('%s', 'now', '-24 hours')
-          AND domain IS NOT NULL
-          AND domain != ''
-          AND status != 1
-        GROUP BY domain
-        ORDER BY queries DESC
-        LIMIT 50
-        """
-
-        permitted_results = query_ftl_database(permitted_query)
-        top_permitted_domains = []
-        for row in permitted_results:
-            top_permitted_domains.append({
-                "domain": row.get("domain", "unknown"),
-                "queries": float(row.get("queries", 0)),
-            })
-
-        # Get top blocked domains (last 24 hours, status = 1)
-        blocked_query = """
-        SELECT
-            domain,
-            COUNT(*) as queries
-        FROM queries
-        WHERE timestamp > strftime('%s', 'now', '-24 hours')
-          AND domain IS NOT NULL
-          AND domain != ''
-          AND status = 1
-        GROUP BY domain
-        ORDER BY queries DESC
-        LIMIT 50
-        """
-
-        blocked_results = query_ftl_database(blocked_query)
-        top_blocked_domains = []
-        for row in blocked_results:
-            top_blocked_domains.append({
-                "domain": row.get("domain", "unknown"),
-                "queries": float(row.get("queries", 0)),
-            })
+        # Get upstreams from v6 API
+        try:
+            resp = requests.get(f"{api_base}/api/stats/upstreams", timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                upstream_servers = {}
+                for upstream in data.get("upstreams", []):
+                    name = upstream.get("name", upstream.get("ip", "unknown"))
+                    count = upstream.get("count", 0)
+                    upstream_servers[name] = float(count)
+                print(f"Got {len(upstream_servers)} upstreams")
+        except Exception as e:
+            print(f"Error fetching upstreams: {e}")
+            upstream_servers = {}
 
         cache_time = time.time()
         print(f"Fetched stats: {len(per_client_metrics)} clients, {len(top_domains)} domains")
         print(f"Query types: {len(query_types)}, Upstream servers: {len(upstream_servers)}")
-        print(f"Top permitted: {len(top_permitted_domains)}, Top blocked: {len(top_blocked_domains)}")
         print(f"Metrics cache: queries_total={metrics_cache.get('dns_queries_total', 0)}, clients={metrics_cache.get('clients_total', 0)}")
         return True
 
@@ -446,6 +327,10 @@ def format_metrics():
         "# HELP pihole_devices_active_24h Active network devices in last 24 hours",
         "# TYPE pihole_devices_active_24h gauge",
         f"pihole_devices_active_24h {metrics_cache.get('devices_active_24h', 0)}",
+        "",
+        "# HELP pihole_gravity_domains Total domains in gravity blocklist",
+        "# TYPE pihole_gravity_domains gauge",
+        f"pihole_gravity_domains {metrics_cache.get('gravity_domains', 0)}",
         "",
     ])
 

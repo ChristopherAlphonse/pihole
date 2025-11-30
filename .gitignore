@@ -1,38 +1,35 @@
 # Secrets and sensitive files
 *.secret
 .env
-.env.*
-*.env
+.env.pihole
 secret/*
 .pihole
 
-# Certificates and keys
-.pem
-.key
-.crt
-.csr
+# Keep example files
+!.env.pihole.example
+
+# Certificates and keys (generated locally)
 certs/
 *.pem
 *.key
 *.crt
 *.csr
 
-# Device-specific and sensitive configuration
+# Device-specific configuration
 pihole_address.txt
 device-mappings.txt
 custom-blocklist.txt
+CREDENTIALS.txt
+phone-wireguard.conf
 
-# Compose files with passwords (use .env files instead)
-compose.grafana.yaml
-# Note: compose.yaml should use .env.pihole for sensitive data
-
-# Temporary and one-time scripts
+# Temporary scripts
 check-*.ps1
 check-*.sh
 whitelist-*.ps1
 whitelist-*.sh
 cleanup-*.ps1
 cleanup-*.sh
+use-pihole-dns.sh
 
 # Python cache
 __pycache__/
@@ -54,11 +51,10 @@ Thumbs.db
 *.log
 logs/
 
-# Docker volumes data (if mounted locally)
+# Docker volumes data
 docker-data/
 volumes/
 
 # Backup files
 *.bak
 *.backup
-*~
