@@ -2,6 +2,12 @@
 
 A complete, one-command deployment of Pi-hole with Grafana monitoring, Prometheus metrics, and optional WireGuard VPN for remote access.
 
+
+<hr/>
+<img width="1665" height="976" alt="198c3b80-73e0-11e9-8308-5fc92b936f98" src="https://github.com/user-attachments/assets/4361c84b-0585-4ec6-85ef-c11d16e81279" />
+<hr/>
+
+
 <details>
   <summary><strong>Pi-hole AI Deployment Instructions (click to expand)</strong></summary>
 
@@ -150,7 +156,7 @@ The setup script will:
 
 ### Manual 
 
-<img width="1665" height="976" alt="198c3b80-73e0-11e9-8308-5fc92b936f98" src="https://github.com/user-attachments/assets/4361c84b-0585-4ec6-85ef-c11d16e81279" />
+
 
 Setup
 
