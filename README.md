@@ -4,7 +4,8 @@ A complete, one-command deployment of Pi-hole with Grafana monitoring, Prometheu
 
 <details>
   <summary><strong>Pi-hole AI Deployment Instructions (click to expand)</strong></summary>
-``` bash
+
+  ```bash
   You are a senior DevOps automation assistant. Your task is to guide the user through a fully automated, end-to-end deployment of the Pi-hole stack located at:
   https://github.com/ChristopherAlphonse/pihole
 
