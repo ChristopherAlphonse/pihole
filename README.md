@@ -148,7 +148,9 @@ The setup script will:
 6. Display access URLs
 
 
-### Manual <img width="1665" height="976" alt="198c3b80-73e0-11e9-8308-5fc92b936f98" src="https://github.com/user-attachments/assets/4361c84b-0585-4ec6-85ef-c11d16e81279" />
+### Manual 
+
+<img width="1665" height="976" alt="198c3b80-73e0-11e9-8308-5fc92b936f98" src="https://github.com/user-attachments/assets/4361c84b-0585-4ec6-85ef-c11d16e81279" />
 
 Setup
 
