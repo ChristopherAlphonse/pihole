@@ -4,7 +4,8 @@ A complete, one-command deployment of Pi-hole with Grafana monitoring, Prometheu
 
 
 <hr/>
-<img width="1665" height="976" alt="198c3b80-73e0-11e9-8308-5fc92b936f98" src="https://github.com/user-attachments/assets/4361c84b-0585-4ec6-85ef-c11d16e81279" />
+<img width="1689" height="825" alt="pi" src="https://github.com/user-attachments/assets/63c9373c-6c6f-4296-ab72-41746b807876" />
+
 <hr/>
 
 
